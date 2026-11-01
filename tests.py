@@ -75,24 +75,27 @@ class TestBooksCollector:
         books = collector.get_books_with_specific_genre('Фантастика')
         assert 'Дюна' in books and 'Основание' in books and len(books) == 2
 
-    @pytest.mark.parametrize('genre, is_for_children', [
-        ('Мультфильмы', True),   # Без возрастного рейтинга — подходит детям
-        ('Комедии', True),       # Без возрастного рейтинга — подходит детям
-        ('Ужасы', False),        # С возрастным рейтингом — НЕ подходит детям
-        ('Детективы', False)     # С возрастным рейтингом — НЕ подходит детям
-    ])
-    def test_get_books_for_children_filtration_by_age_rating(self, genre, is_for_children):
-        # 7. Параметризация на проверку детских и взрослых жанров
+    @pytest.mark.parametrize('genre', ['Мультфильмы', 'Комедии'])
+    def test_get_books_for_children_allowed_genres_are_added(self, genre):
+        # 7а. Проверяем, что жанры без возрастного рейтинга успешно добавляются в список для детей
         collector = BooksCollector()
-        book_name = f'Тестовая книга {genre}'
+        book_name = f'Детская книга {genre}'
         collector.add_new_book(book_name)
         collector.set_book_genre(book_name, genre)
         
         children_books = collector.get_books_for_children()
-        if is_for_children:
-            assert book_name in children_books
-        else:
-            assert book_name not in children_books
+        assert book_name in children_books
+
+    @pytest.mark.parametrize('genre', ['Ужасы', 'Детективы'])
+    def test_get_books_for_children_restricted_genres_are_excluded(self, genre):
+        # 7б. Проверяем, что жанры с возрастным рейтингом строго исключаются из списка для детей
+        collector = BooksCollector()
+        book_name = f'Взрослая книга {genre}'
+        collector.add_new_book(book_name)
+        collector.set_book_genre(book_name, genre)
+        
+        children_books = collector.get_books_for_children()
+        assert book_name not in children_books
 
     def test_add_book_in_favorites_existing_book_is_added(self):
         # 8. Успешное добавление существующей книги в избранное
@@ -114,3 +117,27 @@ class TestBooksCollector:
         collector.add_book_in_favorites('Гарри Поттер')
         collector.delete_book_from_favorites('Гарри Поттер')
         assert 'Гарри Поттер' not in collector.get_list_of_favorites_books()
+
+    def test_get_books_genre_returns_full_dictionary(self):
+        # 11. Тестируем непосредственно метод get_books_genre
+        collector = BooksCollector()
+        collector.add_new_book('Русалочка')
+        collector.set_book_genre('Русалочка', 'Мультфильмы')
+        
+        current_genres = collector.get_books_genre()
+        assert current_genres == {'Русалочка': 'Мультфильмы'}
+
+    def test_get_list_of_favorites_books_returns_full_list(self):
+        # 12. Тестируем непосредственно метод get_list_of_favorites_books
+        collector = BooksCollector()
+        collector.add_new_book('Дракула')
+        collector.add_book_in_favorites('Дракула')
+        
+        favorites_list = collector.get_list_of_favorites_books()
+        assert favorites_list == ['Дракула'] 
+
+        # перенести создание экземпляра в фикстуры в отдельный файл conftest - это не стал делать
+        # в 26 строчке прописано: 
+        # # чтобы тесты были независимыми в каждом из них создавай отдельный экземпляр класса BooksCollector()
+        # но с реальным проектом лучше использовать фикстуры, чтобы код был чище, согласен полностью
+
